@@ -1,0 +1,36 @@
+{
+    "id": null,
+    "title": "Cardio Risk API",
+    "uid": "cardio-risk-api",
+    "schemaVersion": 39,
+    "panels": [
+        {
+            "title": "Prediction Requests",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "expr": "sum(rate(http_requests_total{handler=\"/evaluate-risk\"}[5m]))",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Prediction Latency",
+            "type": "timeseries",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler=\"/evaluate-risk\"}[5m])) by (le))",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    }
+                }
+            ]
+        }
+    ]
+}

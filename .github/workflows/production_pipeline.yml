@@ -1,0 +1,65 @@
+name: MLOps Production CI/CD Engine
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  quality-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Cache Pip Environment
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Lint Source Code (Flake8)
+      run: |
+        flake8 src app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Execute Data & Training Pipeline
+      run: |
+        python -m src.data_loader
+        python -m src.feature_engineering
+        python -m src.train
+
+    - name: Evaluate trained model
+      run: |
+        python -m src.evaluate
+
+    - name: Execute Automated Test Suite (Pytest)
+      run: |
+        pytest -v --tb=short tests/
+
+    - name: Build Docker Container Image
+      run: |
+        docker build -t cardio-risk-api:latest .
+
+    - name: Verify Containerized Service in Isolated Sandbox
+      run: |
+        bash scripts/verify_container.sh
+
+    - name: Archive Model Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-model-pipeline
+        path: models/vascular_risk_estimator.joblib
