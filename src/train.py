@@ -19,7 +19,8 @@ from sklearn.metrics import (
     roc_auc_score, confusion_matrix
 )
 
-from src.feature_engineering import ClinicalFeatureBuilder, PROCESSED_PATH
+from src.data_loader import fetch_uci_dataset
+from src.feature_engineering import ClinicalFeatureBuilder, PROCESSED_PATH, process_raw_data
 
 def build_full_pipeline(classifier) -> Pipeline:
     """Constructs an end-to-end scikit-learn pipeline including feature engineering and scaling."""
@@ -48,8 +49,17 @@ def build_full_pipeline(classifier) -> Pipeline:
         ('classifier', classifier)
     ])
 
+def _load_training_data() -> pd.DataFrame:
+    if os.path.exists(PROCESSED_PATH):
+        return pd.read_csv(PROCESSED_PATH)
+
+    df = process_raw_data(fetch_uci_dataset())
+    os.makedirs(os.path.dirname(PROCESSED_PATH), exist_ok=True)
+    df.to_csv(PROCESSED_PATH, index=False)
+    return df
+
 def execute_experimentation_suite():
-    df = pd.read_csv(PROCESSED_PATH)
+    df = _load_training_data()
     X = df.drop(columns=['target'])
     y = df['target']
 
